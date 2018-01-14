@@ -4,11 +4,13 @@
   "description": "Implementação do trabalho final de Embarcados 2017/2",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js"
   },
   "author": "Gustavo Santos, Eduardo Model",
   "license": "ISC",
   "dependencies": {
+    "request": "^2.83.0",
     "telegraf": "^3.17.3"
   }
 }
