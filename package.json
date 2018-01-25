@@ -11,6 +11,10 @@
   "license": "ISC",
   "dependencies": {
     "request": "^2.83.0",
-    "telegraf": "^3.17.3"
+    "telegraf": "^3.17.3",
+    "twitter": "^1.7.1"
+  },
+  "devDependencies": {
+    "nodemon": "^1.14.11"
   }
 }

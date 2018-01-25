@@ -2,22 +2,40 @@ const Telegraf = require('telegraf')
 const Markup = require('telegraf/markup')
 const fs = require('fs')
 const request = require('request')
+const Twitter = require('twitter')
 
 const geocode = require('./geocode/geocode.js')
 const weather = require('./weather/weather.js')
+const criptomon = require('./criptomon/criptomon.js')
 
-TOKEN = "495259070:AAG4rzmq4Zq9Y-axKZWyVQ1DDT_V9evwVKY"
 
 const admin = {
-    id: [126383917], // ids dos utilizadores
+    id: [parseInt(process.env.ID_EMBARCADOS)], // ids dos utilizadores
     cep: 81540150
 }
 
-// const bot = new Telegraf(process.env.EMBARCADOS_BOD_TOKEN)
-const bot = new Telegraf(TOKEN)
+// const bot = new Telegraf(process.env.EMBARCADOS_BOT_TOKEN)
+const bot = new Telegraf(process.env.EMBARCADOS_BOT_TOKEN)
 bot.start((ctx) => { /* ctx: objeto contexto */
     console.log('[start] :', ctx.from.id)
 })
+
+console.log('> Telefraf inicializado.');
+
+// inicializa a api do twitter
+const twitter = new Twitter({
+    consumer_key: process.env.TWITTER_CONSUMER_KEY,
+    consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
+    access_token_key: process.env.TWITTER_ACCESS_TOKEN_KEY,
+    access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET
+})
+
+if (twitter) {
+    console.log('> Twitter inicializado.');
+} else {
+    console.log('> Erro ao inicializar a api do twitter.');
+}
+
 
 /************************* COMUNICAÇÃO COM O ARDUINO *************************/
 bot.command('ler_temp', (ctx) => {
@@ -80,9 +98,69 @@ bot.command('meteorologia', (ctx) => {
                 })
             }
         })
+    }
+    else {
+        console.log('Usuário desconhecido')
+        ctx.reply('Usuário não qualificado')
+    }
+})
 
+bot.command('bitcoin', (ctx) => {
+    if (admin.id.includes(ctx.from.id)) {
+        ctx.reply('Acessando a API do CriptCurrentyCap')
+        criptomon.getValoresAtuais('bitcoin', (resp) => {
+            if (!!resp) {
+                msg = `Moeda: ${resp.nome}\n`
+                msg += `Valor atual: R$ ${resp.brl}\n`
+                msg += `Variação na última hora: ${resp.variacao_1h}\%\n`
+                msg += `Variação no último dia: ${resp.variacao_24h}\%\n`
+                msg += `Variação na última semana: ${resp.variacao_7d}\%`
+            }
+            else {
+                msg = 'Erro.'
+            }
 
+            ctx.reply(msg)
+        })
+    }
+    else {
+        console.log('Usuário desconhecido')
+        ctx.reply('Usuário não qualificado')
+    }
+})
+
+bot.command('mon_bitcoin', (ctx) => {
+    if (admin.id.includes(ctx.from.id)) {
+        ctx.reply('Configurando bot.')
+
+        var ultimoTimestamp = ''
         
+        criptomon.monitorarMoeda('bitcoin',
+            (resp) => {
+                if (resp.ultima_atualizacao != ultimoTimestamp) {
+                    ultimoTimestamp = resp.ultima_atualizacao
+                    return true
+                }
+                else {
+                    return false
+                }
+            },
+            (resp) => {
+                if (!!resp) {
+                    msg = `Moeda: ${resp.nome}\n`
+                    msg += `Valor atual: R$ ${resp.brl}\n`
+                    msg += `Variação na última hora: ${resp.variacao_1h}\%\n`
+                    msg += `Variação no último dia: ${resp.variacao_24h}\%\n`
+                    msg += `Variação na última semana: ${resp.variacao_7d}\%`
+                }
+                else {
+                    msg = 'Erro.'
+                }
+                ctx.reply(msg)
+            }
+        )
+
+        ctx.reply('Bot configurado')
     }
     else {
         console.log('Usuário desconhecido')
@@ -98,7 +176,8 @@ bot.command('comandos', (ctx) => {
             .keyboard([
                 ['/ler_temp', '/disparar_alarme'],
                 ['/capturar'],
-                ['/meteorologia']
+                ['/meteorologia', '/bitcoin'],
+                ['/mon_bitcoin']
             ])
             .oneTime()
             .resize()
@@ -112,4 +191,5 @@ bot.command('comandos', (ctx) => {
 })
 
 /* inicia a execução do bot */
+console.log('> Esperando por mensagens.');
 bot.startPolling()

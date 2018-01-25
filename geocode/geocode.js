@@ -16,10 +16,10 @@ function geocodeAddress(address, callback) {
                     lgn: body.results[0].geometry.location.lng
                 });
             } else {
-                callback('Error to connect to Google Servers.')
+                callback('Erro ao conectar com os servidores do Google.')
             }
         } else {
-            callback('Error to connect to Google Servers.')
+            callback('Erro ao conectar com os servidores do Google.')
         }
     })
 }

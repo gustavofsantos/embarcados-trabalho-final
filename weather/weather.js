@@ -17,7 +17,7 @@ function getWeather (lat, lng, callback) {
                 }
                 callback(undefined, info)
             } else {
-                callback('Erro.')
+                callback('Erro na comunicação com o DarkSky.')
             }
     })
 }
