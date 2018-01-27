@@ -3,15 +3,22 @@ const Markup = require('telegraf/markup')
 const fs = require('fs')
 const request = require('request')
 const Twitter = require('twitter')
+const NodeWebCam = require('node-webcam')
 
 const geocode = require('./geocode/geocode.js')
 const weather = require('./weather/weather.js')
 const criptomon = require('./criptomon/criptomon.js')
+const arduino = require('./arduino/arduino.js')
 
-
+/* INICIALIZAÇÃO DAS DEPENDENCIAS DO PROJETO */
 const admin = {
     id: [parseInt(process.env.ID_EMBARCADOS)], // ids dos utilizadores
     cep: 81540150
+}
+
+const config = {
+    modo_automatico: false,
+    modo_erro: false
 }
 
 // const bot = new Telegraf(process.env.EMBARCADOS_BOT_TOKEN)
@@ -36,12 +43,29 @@ if (twitter) {
     console.log('> Erro ao inicializar a api do twitter.');
 }
 
+const WebCam = NodeWebCam.create({
+    width: 1280,
+    height: 720,
+    quality: 100,
+    delay: 0,
+    saveShots: true,
+    output: "jpeg",
+})
 
 /************************* COMUNICAÇÃO COM O ARDUINO *************************/
 bot.command('ler_temp', (ctx) => {
     console.log(`[ler temperatura do sensor] : ${ctx.message.from.username}`)
     if (admin.id.includes(ctx.from.id)) {
         ctx.reply('ler temperatura do sensor')
+        arduino.lerArduino('temp', (resp) => {
+            if (!!resp) { 
+                ctx.reply(`Temperatura interna: ${resp}°C`)
+            }
+            else {
+                ctx.reply('Erro na comunicação com o Arduino.')
+                config.modo_erro = true
+            }
+        })
     }
     else {
         console.log('Usuário desconhecido')
@@ -53,6 +77,14 @@ bot.command('disparar_alarme', (ctx) => {
     console.log(`[disparar alarme] : ${ctx.message.from.username}`)
     if (admin.id.includes(ctx.from.id)) {
         ctx.reply('disparar alarme')
+        arduino.enviarArduino('alarme', (resp) => {
+            if (!!resp) {
+                ctx.reply(resp)
+            }
+            else {
+                ctx.reply('Erro na comunicação com o Arduino.')
+            }
+        })
     }
     else {
         console.log('Usuário desconhecido')
@@ -66,6 +98,14 @@ bot.command('capturar', (ctx) => {
     console.log(`[capturar imagem da camera] : ${ctx.message.from.username}`)
     if (admin.id.includes(ctx.from.id)) {
         ctx.reply('capturar imagem da camera')
+        NodeWebCam.capture('img', (erro, dados) => {
+            if (erro) {
+                ctx.reply('Erro')
+            }
+            else {
+                ctx.replyWithPhoto({ source: 'img' })
+            }
+        })
     }
     else {
         console.log('Usuário desconhecido')
@@ -176,6 +216,7 @@ bot.command('comandos', (ctx) => {
             .keyboard([
                 ['/ler_temp', '/disparar_alarme'],
                 ['/capturar'],
+                ['/ativ_mon_inteligente'],
                 ['/meteorologia', '/bitcoin'],
                 ['/mon_bitcoin']
             ])

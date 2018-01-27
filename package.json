@@ -10,7 +10,9 @@
   "author": "Gustavo Santos, Eduardo Model",
   "license": "ISC",
   "dependencies": {
+    "node-webcam": "^0.4.3",
     "request": "^2.83.0",
+    "serialport": "^6.0.4",
     "telegraf": "^3.17.3",
     "twitter": "^1.7.1"
   },
