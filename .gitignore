@@ -1,2 +1,5 @@
 node_modules/
+node
+bot
+package-lock.json
 run.sh
