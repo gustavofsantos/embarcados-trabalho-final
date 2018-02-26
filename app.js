@@ -24,8 +24,8 @@ const config = {
 
 // listagem das cameras conectadas
 const listDev = fs.readdirSync('/dev')
-const dispArduino = listDev.filter(disp => disp.indexOf('ttyUSB') > -1)
-const listCameras = listDev.filter(disp => disp.indexOf('video') > -1)
+const dispArduino = listDev.filter(disp => disp.indexOf('ttyUSB') > -1) || undefined
+const listCameras = listDev.filter(disp => disp.indexOf('video') > -1) || undefined
 
 const arduino = new Arduino(`/dev/${dispArduino[0]}`) || null
 
@@ -78,15 +78,20 @@ bot.command('ler_temp', (ctx) => {
     console.log(`[ler temperatura do sensor] : ${ctx.message.from.username}`)
     if (admin.id.includes(ctx.from.id)) {
         ctx.reply('ler temperatura do sensor')
-        arduino.lerArduino('t', (resp) => {
-            if (!!resp) { 
-                ctx.reply(`Temperatura interna: ${resp}°C`)
-            }
-            else {
-                ctx.reply('Erro na comunicação com o Arduino.')
-                config.modo_erro = true
-            }
-        })
+        if (arduino) {
+            arduino.lerArduino('t', (resp) => {
+                if (!!resp) { 
+                    ctx.reply(`Temperatura interna: ${resp}°C`)
+                }
+                else {
+                    ctx.reply('Erro na comunicação com o Arduino.')
+                    config.modo_erro = true
+                }
+            })
+        }
+        else {
+            ctx.reply('Falha na comunicação com o Arduino')
+        }
     }
     else {
         console.log('Usuário desconhecido')
@@ -98,14 +103,20 @@ bot.command('disparar_alarme', (ctx) => {
     console.log(`[disparar alarme] : ${ctx.message.from.username}`)
     if (admin.id.includes(ctx.from.id)) {
         ctx.reply('disparar alarme')
-        arduino.enviarArduino('a', (resp) => {
-            if (!!resp) {
-                ctx.reply(resp)
-            }
-            else {
-                ctx.reply('Erro na comunicação com o Arduino.')
-            }
-        })
+        if (arduino) {
+            arduino.enviarArduino('a', (resp) => {
+                if (!!resp) {
+                    ctx.reply(resp)
+                }
+                else {
+                    ctx.reply('Erro na comunicação com o Arduino.')
+                }
+            })
+        }
+        else {
+            ctx.reply('Falha na comunicação com o Arduino')
+        }
+        
     }
     else {
         console.log('Usuário desconhecido')
