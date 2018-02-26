@@ -3,17 +3,18 @@ const Markup = require('telegraf/markup')
 const fs = require('fs')
 const request = require('request')
 const Twitter = require('twitter')
-const NodeWebCam = require('node-webcam')
+const NodeWebcam = require('node-webcam')
 
 const geocode = require('./geocode/geocode.js')
 const weather = require('./weather/weather.js')
 const criptomon = require('./criptomon/criptomon.js')
-const arduino = require('./arduino/arduino.js')
+const Arduino = require('./arduino/arduino.js')
+
 
 /* INICIALIZAÇÃO DAS DEPENDENCIAS DO PROJETO */
 const admin = {
     id: [parseInt(process.env.ID_EMBARCADOS)], // ids dos utilizadores
-    cep: 81540150
+    cep: 96010610
 }
 
 const config = {
@@ -21,10 +22,39 @@ const config = {
     modo_erro: false
 }
 
+// listagem das cameras conectadas
+const listDev = fs.readdirSync('/dev')
+const dispArduino = listDev.filter(disp => disp.indexOf('ttyUSB') > -1)
+const listCameras = listDev.filter(disp => disp.indexOf('video') > -1)
+
+const arduino = new Arduino(`/dev/${dispArduino[0]}`) || null
+
+const optsNodeWebCam = {
+    width: 1280,
+    height: 720,
+    delay: 1,
+    quality: 100,
+    output: "jpeg",
+    device: false,
+    verbose: true
+}
+const cam = NodeWebcam.create(optsNodeWebCam);
+
+
+//process.exit()
+
 // const bot = new Telegraf(process.env.EMBARCADOS_BOT_TOKEN)
 const bot = new Telegraf(process.env.EMBARCADOS_BOT_TOKEN)
 bot.start((ctx) => { /* ctx: objeto contexto */
     console.log('[start] :', ctx.from.id)
+    arduino.verificarArduino((resp, erro) => {
+        if (erro) {
+            console.log('ERRO')
+        }
+        else {
+            console.log('Arduino conectado')
+        }
+    })
 })
 
 console.log('> Telefraf inicializado.');
@@ -43,21 +73,12 @@ if (twitter) {
     console.log('> Erro ao inicializar a api do twitter.');
 }
 
-const WebCam = NodeWebCam.create({
-    width: 1280,
-    height: 720,
-    quality: 100,
-    delay: 0,
-    saveShots: true,
-    output: "jpeg",
-})
-
 /************************* COMUNICAÇÃO COM O ARDUINO *************************/
 bot.command('ler_temp', (ctx) => {
     console.log(`[ler temperatura do sensor] : ${ctx.message.from.username}`)
     if (admin.id.includes(ctx.from.id)) {
         ctx.reply('ler temperatura do sensor')
-        arduino.lerArduino('temp', (resp) => {
+        arduino.lerArduino('t', (resp) => {
             if (!!resp) { 
                 ctx.reply(`Temperatura interna: ${resp}°C`)
             }
@@ -77,7 +98,7 @@ bot.command('disparar_alarme', (ctx) => {
     console.log(`[disparar alarme] : ${ctx.message.from.username}`)
     if (admin.id.includes(ctx.from.id)) {
         ctx.reply('disparar alarme')
-        arduino.enviarArduino('alarme', (resp) => {
+        arduino.enviarArduino('a', (resp) => {
             if (!!resp) {
                 ctx.reply(resp)
             }
@@ -91,19 +112,38 @@ bot.command('disparar_alarme', (ctx) => {
         ctx.reply('Usuário não qualificado')
     }
 })
+
+bot.command('led', ctx => {
+    console.log(`[led] : ${ctx.message.from.username}`)
+    if (admin.id.includes(ctx.from.id)) {
+        ctx.reply('led')
+        arduino.enviarArduino('l', (resp) => {
+            if (!resp) {
+                ctx.reply('Erro na comunicação com o Arduino.')
+            }
+            else {
+                ctx.reply(resp)
+            }
+        })
+    }
+    else {
+        console.log('Usuário desconhecido')
+        ctx.reply('Usuário não qualificado')
+    }
+})
 /************************* COMUNICAÇÃO COM O ARDUINO *************************/
 
 /************************* INTEGRAÇÃO COM PERIFÉRICOS ************************/
-bot.command('capturar', (ctx) => {
+bot.command('camera1', (ctx) => {
     console.log(`[capturar imagem da camera] : ${ctx.message.from.username}`)
     if (admin.id.includes(ctx.from.id)) {
         ctx.reply('capturar imagem da camera')
-        NodeWebCam.capture('img', (erro, dados) => {
+        cam.capture('img', (erro, dados) => {
             if (erro) {
                 ctx.reply('Erro')
             }
             else {
-                ctx.replyWithPhoto({ source: 'img' })
+                ctx.replyWithPhoto({ source: 'img.jpg' })
             }
         })
     }
@@ -188,7 +228,7 @@ bot.command('mon_bitcoin', (ctx) => {
             (resp) => {
                 if (!!resp) {
                     msg = `Moeda: ${resp.nome}\n`
-                    msg += `Valor atual: R$ ${resp.brl}\n`
+                    msg += `Valor atual: R$ ${parseFloat(resp.brl).toFixed(2)}\n`
                     msg += `Variação na última hora: ${resp.variacao_1h}\%\n`
                     msg += `Variação no último dia: ${resp.variacao_24h}\%\n`
                     msg += `Variação na última semana: ${resp.variacao_7d}\%`
@@ -215,7 +255,7 @@ bot.command('comandos', (ctx) => {
         ctx.reply('Comandos disponíveis', Markup
             .keyboard([
                 ['/ler_temp', '/disparar_alarme'],
-                ['/capturar'],
+                ['/camera1', '/led'],
                 ['/ativ_mon_inteligente'],
                 ['/meteorologia', '/bitcoin'],
                 ['/mon_bitcoin']
